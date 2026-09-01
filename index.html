@@ -188,29 +188,80 @@
             // Jika selisih terlalu jauh, anggap tidak dikenal
             return minDiff < 15000 ? bestMatch : null;
         }
+// Fungsi bantuan untuk menghitung histogram warna RGB dari sebuah gambar di canvas
+function getColorHistogram(ctx, width, height) {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    const histR = new Array(16).fill(0);
+    const histG = new Array(16).fill(0);
+    const histB = new Array(16).fill(0);
 
-        // Tombol "Kenali Objek" Ditekan
-        recognizeBtn.addEventListener('click', async () => {
-            currentBlob = await captureSnapshot();
-            const matchedItem = await matchObject(currentBlob);
+    for (let i = 0; i < data.length; i += 4) {
+        // Reduksi rentang warna dari 256 ke 16 bin agar lebih toleran terhadap variasi kecil
+        const r = Math.floor(data[i] / 16);
+        const g = Math.floor(data[i + 1] / 16);
+        const b = Math.floor(data[i + 2] / 16);
+        
+        histR[r]++;
+        histG[g]++;
+        histB[b]++;
+    }
 
-            cameraContainer.classList.add('hidden');
-            resultContainer.classList.remove('hidden');
+    // Normalisasi histogram
+    const totalPixels = width * height;
+    return [
+        ...histR.map(v => v / totalPixels),
+        ...histG.map(v => v / totalPixels),
+        ...histB.map(v => v / totalPixels)
+    ];
+}
 
-            if (matchedItem) {
-                // Objek Dikenal (Fitur 4)
-                recognizedResult.classList.remove('hidden');
-                unrecognizedResult.classList.add('hidden');
-                
-                resName.textContent = matchedItem.name;
-                resDesc.textContent = matchedItem.description;
-                resImage.src = URL.createObjectURL(matchedItem.image);
-            } else {
-                // Objek Tidak Dikenal (Fitur 3)
-                recognizedResult.classList.add('hidden');
-                unrecognizedResult.classList.remove('hidden');
-            }
-        });
+// Fungsi bantuan untuk menghitung kemiripan dua histogram (Chi-Square Distance / Intersection)
+function compareHistograms(hist1, hist2) {
+    let similarity = 0;
+    for (let i = 0; i < hist1.length; i++) {
+        similarity += Math.min(hist1[i], hist2[i]);
+    }
+    return similarity; // Nilai mendekati 1.0 berarti sangat mirip
+}
+
+// Ganti fungsi matchObject lama dengan logika histogram ini
+async function matchObject(newBlob) {
+    const allItems = await db.items.toArray();
+    if (allItems.length === 0) return null;
+
+    // Buat bitmap/image dari blob baru untuk dianalisis di canvas
+    const newBitmap = await createImageBitmap(newBlob);
+    const canvas = document.createElement('canvas');
+    canvas.width = 100;
+    canvas.height = 100;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(newBitmap, 0, 0, 100, 100);
+    
+    const newHist = getColorHistogram(ctx, 100, 100);
+
+    let bestMatch = null;
+    let highestSimilarity = 0;
+    const THRESHOLD = 0.70; // Batas minimal kemiripan (70%)
+
+    for (let item of allItems) {
+        const itemBitmap = await createImageBitmap(item.image);
+        ctx.clearRect(0, 0, 100, 100);
+        ctx.drawImage(itemBitmap, 0, 0, 100, 100);
+        
+        const itemHist = getColorHistogram(ctx, 100, 100);
+        const similarity = compareHistograms(newHist, itemHist);
+
+        if (similarity > highestSimilarity) {
+            highestSimilarity = similarity;
+            bestMatch = item;
+        }
+    }
+
+    // Jika tingkat kemiripan melewati ambang batas, anggap dikenal
+    return highestSimilarity >= THRESHOLD ? bestMatch : null;
+}
+        
 
         // Tombol "Tambah ke Database" dari menu Tidak Dikenal
         goToRegisterBtn.addEventListener('click', () => {
