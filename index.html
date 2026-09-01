@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akses Kamera Pengenalan Objek</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #f4f4f9;
+        }
+        video {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            background: #000;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Kamera Pengenalan Objek</h2>
+    
+    <!-- Elemen Video untuk menampilkan preview kamera -->
+    <video id="cameraStream" autoplay playsinline></video>
+    <div>
+        <button id="captureBtn">Ambil Foto (Snapshot)</button>
+    </div>
+
+    <!-- Canvas tersembunyi untuk mengambil gambar dari video -->
+    <canvas id="snapshotCanvas" style="display:none;"></canvas>
+    
+    <!-- Hasil tangkapan foto -->
+    <div id="result" style="margin-top: 20px;"></div>
+
+    <script>
+        const video = document.getElementById('cameraStream');
+        const captureBtn = document.getElementById('captureBtn');
+        const canvas = document.getElementById('snapshotCanvas');
+        const resultDiv = document.getElementById('result');
+
+        // Fungsi untuk mengaktifkan kamera
+        async function startCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: 'environment' // Menggunakan kamera belakang pada ponsel
+                    }
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+            } catch (error) {
+                console.error("Gagal mengakses kamera: ", error);
+                alert("Pastikan Anda memberikan izin akses kamera.");
+            }
+        }
+
+        // Jalankan kamera saat halaman dimuat
+        window.addEventListener('load', startCamera);
+
+        // Fitur mengambil foto (snapshot) saat tombol diklik
+        captureBtn.addEventListener('click', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Ubah gambar di canvas menjadi format data URL (Base64)
+            const imageDataUrl = canvas.toDataURL('image/png');
+
+            // Tampilkan hasil foto di bawah
+            resultDiv.innerHTML = `
+                <h3>Foto Berhasil Diambil:</h3>
+                <img src="${imageDataUrl}" alt="Snapshot Objek" style="width:200px; border-radius:8px;">
+            `;
+        });
+    </script>
+
+</body>
+</html>
