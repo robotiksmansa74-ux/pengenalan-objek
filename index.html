@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Akses Kamera Pengenalan Objek</title>
+    <title>Aplikasi Pengenalan Objek - Database</title>
+    <!-- Memuat Dexie.js dari CDN untuk IndexedDB yang mudah -->
+    <script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
     <style>
         body {
             font-family: sans-serif;
@@ -11,84 +13,175 @@
             padding: 20px;
             background: #f4f4f9;
         }
-        video {
+        video, img#preview {
             width: 100%;
             max-width: 400px;
             border-radius: 10px;
             background: #000;
         }
-        button {
-            margin-top: 15px;
-            padding: 10px 20px;
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        input, textarea, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
             font-size: 16px;
-            background: #007bff;
+            box-sizing: border-box;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background: #28a745;
             color: white;
             border: none;
-            border-radius: 5px;
             cursor: pointer;
         }
         button:hover {
-            background: #0056b3;
+            background: #218838;
         }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <h2>Kamera Pengenalan Objek</h2>
-    
-    <!-- Elemen Video untuk menampilkan preview kamera -->
-    <video id="cameraStream" autoplay playsinline></video>
-    <div>
-        <button id="captureBtn">Ambil Foto (Snapshot)</button>
+    <div class="container">
+        <h2>Kamera Pengenalan Objek</h2>
+        
+        <!-- Live Preview Kamera -->
+        <video id="cameraStream" autoplay playsinline></video>
+        <div>
+            <button id="captureBtn" style="background: #007bff;">Ambil Foto untuk Disimpan</button>
+        </div>
+
+        <!-- Form Tambah Objek (Muncul setelah foto diambil) -->
+        <div id="formContainer" class="hidden">
+            <h3>Daftarkan Objek Baru</h3>
+            <img id="snapshotPreview" alt="Preview Foto">
+            <input type="text" id="objName" placeholder="Nama Objek (Contoh: Botol Minum)">
+            <textarea id="objDesc" placeholder="Deskripsi Objek (Contoh: Botol plastik 500ml warna biru)"></textarea>
+            <button id="saveBtn">Simpan ke Database</button>
+            <button id="cancelBtn" style="background: #6c757d; margin-top: 5px;">Batal</button>
+        </div>
+
+        <!-- Daftar Objek Tersimpan -->
+        <div style="margin-top: 30px; text-align: left;">
+            <h3>Database Lokal:</h3>
+            <ul id="objectList"></ul>
+        </div>
     </div>
 
-    <!-- Canvas tersembunyi untuk mengambil gambar dari video -->
     <canvas id="snapshotCanvas" style="display:none;"></canvas>
-    
-    <!-- Hasil tangkapan foto -->
-    <div id="result" style="margin-top: 20px;"></div>
 
     <script>
+        // 1. Inisialisasi Database IndexedDB menggunakan Dexie
+        const db = new Dexie('ObjekDatabase');
+        db.version(1).stores({
+            items: '++id, name, description, image'
+        });
+
         const video = document.getElementById('cameraStream');
         const captureBtn = document.getElementById('captureBtn');
         const canvas = document.getElementById('snapshotCanvas');
-        const resultDiv = document.getElementById('result');
+        const formContainer = document.getElementById('formContainer');
+        const snapshotPreview = document.getElementById('snapshotPreview');
+        const objNameInput = document.getElementById('objName');
+        const objDescInput = document.getElementById('objDesc');
+        const saveBtn = document.getElementById('saveBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const objectList = document.getElementById('objectList');
 
-        // Fungsi untuk mengaktifkan kamera
+        let capturedBlob = null; // Menyimpan data gambar sementara
+
+        // Aktifkan Kamera
         async function startCamera() {
             try {
-                const constraints = {
-                    video: {
-                        facingMode: 'environment' // Menggunakan kamera belakang pada ponsel
-                    }
-                };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
                 video.srcObject = stream;
             } catch (error) {
-                console.error("Gagal mengakses kamera: ", error);
-                alert("Pastikan Anda memberikan izin akses kamera.");
+                console.error("Gagal akses kamera:", error);
+                alert("Izin kamera ditolak atau tidak didukung.");
             }
         }
+        window.addEventListener('load', () => {
+            startCamera();
+            loadObjectList(); // Tampilkan data yang sudah ada saat halaman dimuat
+        });
 
-        // Jalankan kamera saat halaman dimuat
-        window.addEventListener('load', startCamera);
-
-        // Fitur mengambil foto (snapshot) saat tombol diklik
+        // Ambil Foto dan Tampilkan Form Input
         captureBtn.addEventListener('click', () => {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            const context = canvas.getContext('2d');
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Ubah gambar di canvas menjadi format data URL (Base64)
-            const imageDataUrl = canvas.toDataURL('image/png');
+            canvas.toBlob(blob => {
+                capturedBlob = blob;
+                const imageUrl = URL.createObjectURL(blob);
+                snapshotPreview.src = imageUrl;
 
-            // Tampilkan hasil foto di bawah
-            resultDiv.innerHTML = `
-                <h3>Foto Berhasil Diambil:</h3>
-                <img src="${imageDataUrl}" alt="Snapshot Objek" style="width:200px; border-radius:8px;">
-            `;
+                // Sembunyikan video, tampilkan form
+                video.style.display = 'none';
+                captureBtn.style.display = 'none';
+                formContainer.classList.remove('hidden');
+            }, 'image/jpeg');
         });
+
+        // Tombol Batal
+        cancelBtn.addEventListener('click', () => {
+            formContainer.classList.add('hidden');
+            video.style.display = 'block';
+            captureBtn.style.display = 'block';
+            objNameInput.value = '';
+            objDescInput.value = '';
+        });
+
+        // Simpan Data ke IndexedDB
+        saveBtn.addEventListener('click', async () => {
+            const name = objNameInput.value.trim();
+            const description = objDescInput.value.trim();
+
+            if (!name || !capturedBlob) {
+                alert("Nama objek dan foto wajib diisi!");
+                return;
+            }
+
+            try {
+                // Simpan ke database
+                await db.items.add({
+                    name: name,
+                    description: description,
+                    image: capturedBlob
+                });
+
+                alert("Objek berhasil disimpan ke database!");
+                
+                // Reset form & kembali ke kamera
+                cancelBtn.click();
+                loadObjectList();
+            } catch (error) {
+                console.error("Gagal menyimpan:", error);
+                alert("Terjadi kesalahan saat menyimpan data.");
+            }
+        });
+
+        // Fungsi untuk menampilkan daftar objek yang tersimpan
+        async function loadObjectList() {
+            objectList.innerHTML = '';
+            const allItems = await db.items.toArray();
+            if (allItems.length === 0) {
+                objectList.innerHTML = '<li>Belum ada objek tersimpan.</li>';
+                return;
+            }
+            allItems.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.name} - ${item.description}`;
+                objectList.appendChild(li);
+            });
+        }
     </script>
 
 </body>
