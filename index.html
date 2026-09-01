@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Pengenalan Objek - Full Features</title>
-    <!-- Memuat Dexie.js dari CDN -->
+    <title>Aplikasi Pengenalan Objek - Akurat</title>
+    <!-- Memuat Dexie.js dari CDN untuk IndexedDB -->
     <script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
     <style>
         body {
@@ -12,8 +12,9 @@
             text-align: center;
             padding: 20px;
             background: #f4f4f9;
+            margin: 0;
         }
-        video, img#preview, img#resultImage {
+        video, img#preview, img#resultImage, img#snapshotPreview {
             width: 100%;
             max-width: 400px;
             border-radius: 10px;
@@ -26,7 +27,7 @@
         input, textarea, button {
             width: 100%;
             margin-top: 10px;
-            padding: 10px;
+            padding: 12px;
             font-size: 16px;
             box-sizing: border-box;
             border-radius: 5px;
@@ -37,6 +38,7 @@
             color: white;
             border: none;
             cursor: pointer;
+            font-weight: bold;
         }
         button:hover {
             opacity: 0.9;
@@ -65,7 +67,7 @@
             </div>
         </div>
 
-        <!-- Hasil Pengenalan (Jika Dikenal / Tidak Dikenal) -->
+        <!-- Hasil Pengenalan (Dikenal / Tidak Dikenal) -->
         <div id="resultContainer" class="hidden">
             <div id="recognizedResult" class="hidden card">
                 <h3>Objek Dikenali!</h3>
@@ -76,11 +78,11 @@
 
             <div id="unrecognizedResult" class="hidden card" style="background: #fff3cd; border: 1px solid #ffeeba;">
                 <h3>Objek Tidak Dikenal</h3>
-                <p>Objek ini belum ada di dalam database Anda.</p>
+                <p>Objek ini belum terdaftar di database Anda.</p>
                 <button id="goToRegisterBtn" style="background: #ffc107; color: #000;">Tambah ke Database</button>
             </div>
 
-            <button id="backToCameraBtn" style="background: #6c757d; margin-top: 15px;">Kembali ke Kamera</button>
+            <button id="backToCameraBtn" style="background: #6c757d;">Kembali ke Kamera</button>
         </div>
 
         <!-- Form Tambah Objek Baru (Fitur 1) -->
@@ -103,8 +105,8 @@
     <canvas id="snapshotCanvas" style="display:none;"></canvas>
 
     <script>
-        // Inisialisasi Database
-        const db = new Dexie('ObjekDatabase');
+        // 1. Inisialisasi Database IndexedDB
+        const db = new Dexie('ObjekDatabaseAkurat');
         db.version(1).stores({
             items: '++id, name, description, image'
         });
@@ -134,9 +136,9 @@
         const objectList = document.getElementById('objectList');
         const countItems = document.getElementById('countItems');
 
-        let currentBlob = null; // Menyimpan blob foto saat tombol "Kenali" ditekan
+        let currentBlob = null;
 
-        // Aktifkan Kamera
+        // 2. Aktifkan Kamera Belakang Ponsel
         async function startCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -145,7 +147,7 @@
                 video.srcObject = stream;
             } catch (error) {
                 console.error("Gagal akses kamera:", error);
-                alert("Izin kamera ditolak.");
+                alert("Izin kamera ditolak atau perangkat tidak mendukung.");
             }
         }
 
@@ -154,116 +156,109 @@
             updateDatabaseUI();
         });
 
-        // Ambil Snapshot dari Video
+        // 3. Ambil Snapshot dari Video Stream
         function captureSnapshot() {
-            canvas.width = 200; // Perkecil ukuran untuk komparasi cepat
-            canvas.height = 200;
+            canvas.width = 100;
+            canvas.height = 100;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             return new Promise(resolve => {
-                canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.8);
+                canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
             });
         }
 
-        // Algoritma Sederhana Pencocokan Warna/Gambar (Berdasarkan selisih ukuran/data byte blob atau hash warna)
+        // 4. Algoritma Pencocokan Histogram Warna (Color Histogram Matching)
+        function getColorHistogram(ctx, width, height) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            const histR = new Array(16).fill(0);
+            const histG = new Array(16).fill(0);
+            const histB = new Array(16).fill(0);
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = Math.floor(data[i] / 16);
+                const g = Math.floor(data[i + 1] / 16);
+                const b = Math.floor(data[i + 2] / 16);
+                
+                histR[r]++;
+                histG[g]++;
+                histB[b]++;
+            }
+
+            const totalPixels = width * height;
+            return [
+                ...histR.map(v => v / totalPixels),
+                ...histG.map(v => v / totalPixels),
+                ...histB.map(v => v / totalPixels)
+            ];
+        }
+
+        function compareHistograms(hist1, hist2) {
+            let similarity = 0;
+            for (let i = 0; i < hist1.length; i++) {
+                similarity += Math.min(hist1[i], hist2[i]);
+            }
+            return similarity; // Nilai berkisar antara 0.0 hingga 1.0
+        }
+
         async function matchObject(newBlob) {
             const allItems = await db.items.toArray();
             if (allItems.length === 0) return null;
 
-            // Logika pencocokan sederhana: Membandingkan ukuran file blob atau kita cari kecocokan persentase warna
-            // Untuk demo web sederhana, kita bandingkan ukuran byte dan ambil yang paling mendekati, 
-            // atau simulasi pencocokan dengan item pertama/skor kemiripan ukuran.
+            const newBitmap = await createImageBitmap(newBlob);
+            const canvasMatch = document.createElement('canvas');
+            canvasMatch.width = 100;
+            canvasMatch.height = 100;
+            const ctxMatch = canvasMatch.getContext('2d');
+            ctxMatch.drawImage(newBitmap, 0, 0, 100, 100);
+            
+            const newHist = getColorHistogram(ctxMatch, 100, 100);
+
             let bestMatch = null;
-            let minDiff = Infinity;
+            let highestSimilarity = 0;
+            const THRESHOLD = 0.65; // Ambang batas kemiripan (65%)
 
             for (let item of allItems) {
-                const diff = Math.abs(item.image.size - newBlob.size);
-                // Batas toleransi perbedaan ukuran bytes untuk dianggap objek yang mirip
-                if (diff < minDiff && diff < 15000) { 
-                    minDiff = diff;
+                const itemBitmap = await createImageBitmap(item.image);
+                ctxMatch.clearRect(0, 0, 100, 100);
+                ctxMatch.drawImage(itemBitmap, 0, 0, 100, 100);
+                
+                const itemHist = getColorHistogram(ctxMatch, 100, 100);
+                const similarity = compareHistograms(newHist, itemHist);
+
+                if (similarity > highestSimilarity) {
+                    highestSimilarity = similarity;
                     bestMatch = item;
                 }
             }
 
-            // Jika selisih terlalu jauh, anggap tidak dikenal
-            return minDiff < 15000 ? bestMatch : null;
+            return highestSimilarity >= THRESHOLD ? bestMatch : null;
         }
-// Fungsi bantuan untuk menghitung histogram warna RGB dari sebuah gambar di canvas
-function getColorHistogram(ctx, width, height) {
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    const histR = new Array(16).fill(0);
-    const histG = new Array(16).fill(0);
-    const histB = new Array(16).fill(0);
 
-    for (let i = 0; i < data.length; i += 4) {
-        // Reduksi rentang warna dari 256 ke 16 bin agar lebih toleran terhadap variasi kecil
-        const r = Math.floor(data[i] / 16);
-        const g = Math.floor(data[i + 1] / 16);
-        const b = Math.floor(data[i + 2] / 16);
-        
-        histR[r]++;
-        histG[g]++;
-        histB[b]++;
-    }
+        // 5. Interaksi Tombol "Kenali Objek"
+        recognizeBtn.addEventListener('click', async () => {
+            currentBlob = await captureSnapshot();
+            const matchedItem = await matchObject(currentBlob);
 
-    // Normalisasi histogram
-    const totalPixels = width * height;
-    return [
-        ...histR.map(v => v / totalPixels),
-        ...histG.map(v => v / totalPixels),
-        ...histB.map(v => v / totalPixels)
-    ];
-}
+            cameraContainer.classList.add('hidden');
+            resultContainer.classList.remove('hidden');
 
-// Fungsi bantuan untuk menghitung kemiripan dua histogram (Chi-Square Distance / Intersection)
-function compareHistograms(hist1, hist2) {
-    let similarity = 0;
-    for (let i = 0; i < hist1.length; i++) {
-        similarity += Math.min(hist1[i], hist2[i]);
-    }
-    return similarity; // Nilai mendekati 1.0 berarti sangat mirip
-}
+            if (matchedItem) {
+                // Fitur 4: Objek Dikenal
+                recognizedResult.classList.remove('hidden');
+                unrecognizedResult.classList.add('hidden');
+                
+                resName.textContent = matchedItem.name;
+                resDesc.textContent = matchedItem.description;
+                resImage.src = URL.createObjectURL(matchedItem.image);
+            } else {
+                // Fitur 3: Objek Tidak Dikenal (Muncul Tombol Simpan)
+                recognizedResult.classList.add('hidden');
+                unrecognizedResult.classList.remove('hidden');
+            }
+        });
 
-// Ganti fungsi matchObject lama dengan logika histogram ini
-async function matchObject(newBlob) {
-    const allItems = await db.items.toArray();
-    if (allItems.length === 0) return null;
-
-    // Buat bitmap/image dari blob baru untuk dianalisis di canvas
-    const newBitmap = await createImageBitmap(newBlob);
-    const canvas = document.createElement('canvas');
-    canvas.width = 100;
-    canvas.height = 100;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(newBitmap, 0, 0, 100, 100);
-    
-    const newHist = getColorHistogram(ctx, 100, 100);
-
-    let bestMatch = null;
-    let highestSimilarity = 0;
-    const THRESHOLD = 0.70; // Batas minimal kemiripan (70%)
-
-    for (let item of allItems) {
-        const itemBitmap = await createImageBitmap(item.image);
-        ctx.clearRect(0, 0, 100, 100);
-        ctx.drawImage(itemBitmap, 0, 0, 100, 100);
-        
-        const itemHist = getColorHistogram(ctx, 100, 100);
-        const similarity = compareHistograms(newHist, itemHist);
-
-        if (similarity > highestSimilarity) {
-            highestSimilarity = similarity;
-            bestMatch = item;
-        }
-    }
-
-    // Jika tingkat kemiripan melewati ambang batas, anggap dikenal
-    return highestSimilarity >= THRESHOLD ? bestMatch : null;
-}
-        
-
-        // Tombol "Tambah ke Database" dari menu Tidak Dikenal
+        // Pindah ke Form Pendaftaran Objek Baru
         goToRegisterBtn.addEventListener('click', () => {
             resultContainer.classList.add('hidden');
             formContainer.classList.remove('hidden');
@@ -276,7 +271,7 @@ async function matchObject(newBlob) {
             cameraContainer.classList.remove('hidden');
         });
 
-        // Tombol Batal Form Pendaftaran
+        // Batal Form
         cancelFormBtn.addEventListener('click', () => {
             formContainer.classList.add('hidden');
             cameraContainer.classList.remove('hidden');
@@ -284,7 +279,7 @@ async function matchObject(newBlob) {
             objDescInput.value = '';
         });
 
-        // Simpan ke Database (Fitur 1)
+        // Fitur 1: Simpan Objek Baru ke Database
         saveBtn.addEventListener('click', async () => {
             const name = objNameInput.value.trim();
             const description = objDescInput.value.trim();
@@ -300,25 +295,25 @@ async function matchObject(newBlob) {
                 image: currentBlob
             });
 
-            alert("Objek berhasil disimpan!");
+            alert("Objek berhasil disimpan ke database!");
             cancelFormBtn.click();
             updateDatabaseUI();
         });
 
-        // Perbarui Daftar Tampilan Database
+        // Perbarui Daftar Tampilan Database di Bawah
         async function updateDatabaseUI() {
             const allItems = await db.items.toArray();
             countItems.textContent = allItems.length;
             objectList.innerHTML = '';
             
             if (allItems.length === 0) {
-                objectList.innerHTML = '<li>Belum ada data.</li>';
+                objectList.innerHTML = '<li>Belum ada data objek tersimpan.</li>';
                 return;
             }
 
             allItems.forEach(item => {
                 const li = document.createElement('li');
-                li.textContent = `${item.name}`;
+                li.textContent = `${item.name} - ${item.description}`;
                 objectList.appendChild(li);
             });
         }
