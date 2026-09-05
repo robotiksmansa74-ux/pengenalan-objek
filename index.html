@@ -1,324 +1,1161 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Pengenalan Objek - Akurat</title>
-    <!-- Memuat Dexie.js dari CDN untuk IndexedDB -->
-    <script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
-    <style>
-        body {
-            font-family: sans-serif;
-            text-align: center;
-            padding: 20px;
-            background: #f4f4f9;
-            margin: 0;
-        }
-        video, img#preview, img#resultImage, img#snapshotPreview {
-            width: 100%;
-            max-width: 400px;
-            border-radius: 10px;
-            background: #000;
-        }
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-        }
-        input, textarea, button {
-            width: 100%;
-            margin-top: 10px;
-            padding: 12px;
-            font-size: 16px;
-            box-sizing: border-box;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:hover {
-            opacity: 0.9;
-        }
-        .hidden { display: none; }
-        .card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin-top: 15px;
-            text-align: left;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Aplikasi Pengenalan Objek V4</title>
+
+<!-- =========================================================
+     DEXIE.JS
+========================================================= -->
+<script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
+
+<!-- =========================================================
+     TENSORFLOW.JS
+========================================================= -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+
+<!-- =========================================================
+     MOBILENET
+========================================================= -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1"></script>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 15px;
+    background: #f2f4f7;
+    color: #222;
+}
+
+.container {
+    width: 100%;
+    max-width: 500px;
+    margin: auto;
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+/* =========================================================
+   CAMERA
+========================================================= */
+
+.camera-box {
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+video {
+    width: 100%;
+    display: block;
+    background: #000;
+}
+
+.camera-info {
+    padding: 8px;
+    background: #111;
+    color: white;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* =========================================================
+   BUTTON
+========================================================= */
+
+button {
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    margin-top: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-green {
+    background: #28a745;
+    color: white;
+}
+
+.btn-blue {
+    background: #007bff;
+    color: white;
+}
+
+.btn-gray {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-yellow {
+    background: #ffc107;
+    color: #111;
+}
+
+.btn-red {
+    background: #dc3545;
+    color: white;
+}
+
+/* =========================================================
+   CARD
+========================================================= */
+
+.card {
+    background: white;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* =========================================================
+   RESULT
+========================================================= */
+
+.result-title {
+    text-align: center;
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.result-image {
+    width: 100%;
+    max-height: 350px;
+    object-fit: contain;
+    background: #111;
+    border-radius: 8px;
+}
+
+.confidence-box {
+    margin-top: 15px;
+    background: #f1f3f5;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.confidence-bar {
+    width: 100%;
+    height: 20px;
+    background: #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.confidence-progress {
+    height: 100%;
+    width: 0%;
+    background: #28a745;
+    transition: width 0.4s;
+}
+
+.confidence-text {
+    text-align: center;
+    font-weight: bold;
+    margin-top: 7px;
+}
+
+/* =========================================================
+   FORM
+========================================================= */
+
+input,
+textarea {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    font-size: 16px;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.preview {
+    width: 100%;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+/* =========================================================
+   DATABASE
+========================================================= */
+
+.database-item {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 8px;
+}
+
+.database-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.database-desc {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.database-meta {
+    font-size: 11px;
+    color: #888;
+    margin-top: 5px;
+}
+
+.delete-btn {
+    background: #dc3545;
+    color: white;
+    padding: 7px;
+    margin-top: 7px;
+    font-size: 12px;
+}
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+.loading {
+    text-align: center;
+    padding: 15px;
+}
+
+.spinner {
+    border: 4px solid #ddd;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    animation: spin 1s linear infinite;
+    margin: auto;
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.status {
+    text-align: center;
+    font-size: 13px;
+    margin-top: 10px;
+    color: #555;
+}
+
+/* =========================================================
+   TECHNICAL INFO
+========================================================= */
+
+.tech-info {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.5;
+}
+
+</style>
 </head>
+
 <body>
 
-    <div class="container">
-        <h2>Aplikasi Pengenalan Objek</h2>
-        
-        <!-- Tampilan Utama Kamera -->
-        <div id="cameraContainer">
-            <video id="cameraStream" autoplay playsinline></video>
-            <div>
-                <button id="recognizeBtn" style="background: #28a745;">Kenali Objek</button>
-            </div>
-        </div>
+<div class="container">
 
-        <!-- Hasil Pengenalan (Dikenal / Tidak Dikenal) -->
-        <div id="resultContainer" class="hidden">
-            <div id="recognizedResult" class="hidden card">
-                <h3>Objek Dikenali!</h3>
-                <img id="resultImage" alt="Foto Referensi">
-                <p><strong>Nama:</strong> <span id="resName"></span></p>
-                <p><strong>Deskripsi:</strong> <span id="resDesc"></span></p>
-            </div>
+<h2>🔎 Pengenalan Objek V4</h2>
 
-            <div id="unrecognizedResult" class="hidden card" style="background: #fff3cd; border: 1px solid #ffeeba;">
-                <h3>Objek Tidak Dikenal</h3>
-                <p>Objek ini belum terdaftar di database Anda.</p>
-                <button id="goToRegisterBtn" style="background: #ffc107; color: #000;">Tambah ke Database</button>
-            </div>
+<div class="subtitle">
+Pengenalan berbasis fitur visual + MobileNet
+</div>
 
-            <button id="backToCameraBtn" style="background: #6c757d;">Kembali ke Kamera</button>
-        </div>
+<!-- =========================================================
+     MODEL STATUS
+========================================================= -->
 
-        <!-- Form Tambah Objek Baru (Fitur 1) -->
-        <div id="formContainer" class="hidden">
-            <h3>Daftarkan Objek Baru</h3>
-            <img id="snapshotPreview" alt="Preview Foto">
-            <input type="text" id="objName" placeholder="Nama Objek (Contoh: Botol Minum)">
-            <textarea id="objDesc" placeholder="Deskripsi Objek"></textarea>
-            <button id="saveBtn" style="background: #28a745;">Simpan ke Database</button>
-            <button id="cancelFormBtn" style="background: #6c757d;">Batal</button>
-        </div>
+<div class="card">
 
-        <!-- Daftar Objek Tersimpan -->
-        <div style="margin-top: 30px; text-align: left;">
-            <h3>Database Lokal (<span id="countItems">0</span>):</h3>
-            <ul id="objectList" style="padding-left: 20px;"></ul>
-        </div>
+<div id="modelLoading">
+
+    <div class="loading">
+
+        <div class="spinner"></div>
+
+        <p id="modelStatus">
+            Memuat model AI...
+        </p>
+
     </div>
 
-    <canvas id="snapshotCanvas" style="display:none;"></canvas>
+</div>
 
-    <script>
-        // 1. Inisialisasi Database IndexedDB
-        const db = new Dexie('ObjekDatabaseAkuratV2');
-        db.version(1).stores({
-            items: '++id, name, description, image'
-        });
+<div id="modelReady"
+     class="hidden"
+     style="text-align:center;color:#28a745;font-weight:bold;">
 
-        const video = document.getElementById('cameraStream');
-        const recognizeBtn = document.getElementById('recognizeBtn');
-        const canvas = document.getElementById('snapshotCanvas');
-        
-        const cameraContainer = document.getElementById('cameraContainer');
-        const resultContainer = document.getElementById('resultContainer');
-        const recognizedResult = document.getElementById('recognizedResult');
-        const unrecognizedResult = document.getElementById('unrecognizedResult');
-        const formContainer = document.getElementById('formContainer');
-        
-        const resName = document.getElementById('resName');
-        const resDesc = document.getElementById('resDesc');
-        const resImage = document.getElementById('resultImage');
-        
-        const goToRegisterBtn = document.getElementById('goToRegisterBtn');
-        const backToCameraBtn = document.getElementById('backToCameraBtn');
-        
-        const snapshotPreview = document.getElementById('snapshotPreview');
-        const objNameInput = document.getElementById('objName');
-        const objDescInput = document.getElementById('objDesc');
-        const saveBtn = document.getElementById('saveBtn');
-        const cancelFormBtn = document.getElementById('cancelFormBtn');
-        const objectList = document.getElementById('objectList');
-        const countItems = document.getElementById('countItems');
+    ✓ Model AI siap digunakan
 
-        let currentBlob = null;
+</div>
 
-        // 2. Aktifkan Kamera Belakang Ponsel
-        async function startCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
-                video.srcObject = stream;
-            } catch (error) {
-                console.error("Gagal akses kamera:", error);
-                alert("Izin kamera ditolak atau perangkat tidak mendukung.");
-            }
-        }
+</div>
 
-        window.addEventListener('load', () => {
-            startCamera();
-            updateDatabaseUI();
-        });
 
-        // 3. Ambil Snapshot dari Video Stream
-        function captureSnapshot() {
-            canvas.width = 100;
-            canvas.height = 100;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            return new Promise(resolve => {
-                canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
+<!-- =========================================================
+     CAMERA
+========================================================= -->
+
+<div id="cameraContainer">
+
+    <div class="camera-box">
+
+        <video
+            id="cameraStream"
+            autoplay
+            playsinline>
+        </video>
+
+        <div class="camera-info">
+            Gunakan kamera belakang dan arahkan ke objek
+        </div>
+
+    </div>
+
+    <button
+        id="recognizeBtn"
+        class="btn-green"
+        disabled>
+
+        🔍 Kenali Objek
+
+    </button>
+
+</div>
+
+
+<!-- =========================================================
+     RESULT
+========================================================= -->
+
+<div id="resultContainer"
+     class="hidden">
+
+    <!-- OBJECT KNOWN -->
+
+    <div id="recognizedResult"
+         class="card hidden">
+
+        <div class="result-title">
+            ✅ Objek Dikenali
+        </div>
+
+        <img
+            id="resultImage"
+            class="result-image">
+
+        <p>
+            <strong>Nama:</strong>
+            <span id="resName"></span>
+        </p>
+
+        <p>
+            <strong>Deskripsi:</strong>
+            <span id="resDesc"></span>
+        </p>
+
+        <div class="confidence-box">
+
+            <div>
+                <strong>Tingkat Kemiripan</strong>
+            </div>
+
+            <div class="confidence-bar">
+
+                <div
+                    id="confidenceProgress"
+                    class="confidence-progress">
+                </div>
+
+            </div>
+
+            <div
+                id="confidenceText"
+                class="confidence-text">
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- UNKNOWN -->
+
+    <div id="unrecognizedResult"
+         class="card hidden"
+         style="background:#fff3cd;">
+
+        <div class="result-title">
+            ❓ Objek Tidak Dikenal
+        </div>
+
+        <p>
+            Tidak ditemukan objek dengan tingkat kemiripan
+            yang cukup tinggi di database.
+        </p>
+
+        <button
+            id="goToRegisterBtn"
+            class="btn-yellow">
+
+            ➕ Tambahkan ke Database
+
+        </button>
+
+    </div>
+
+
+    <button
+        id="backToCameraBtn"
+        class="btn-gray">
+
+        ← Kembali ke Kamera
+
+    </button>
+
+</div>
+
+
+<!-- =========================================================
+     REGISTER
+========================================================= -->
+
+<div id="formContainer"
+     class="hidden">
+
+    <div class="card">
+
+        <h3>📦 Daftarkan Objek Baru</h3>
+
+        <img
+            id="snapshotPreview"
+            class="preview">
+
+        <input
+            type="text"
+            id="objName"
+            placeholder="Nama objek">
+
+        <textarea
+            id="objDesc"
+            placeholder="Deskripsi objek">
+        </textarea>
+
+        <button
+            id="saveBtn"
+            class="btn-green">
+
+            💾 Simpan Objek
+
+        </button>
+
+        <button
+            id="cancelFormBtn"
+            class="btn-gray">
+
+            Batal
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     DATABASE
+========================================================= -->
+
+<div class="card">
+
+<h3>
+    📚 Database Lokal
+    (<span id="countItems">0</span>)
+</h3>
+
+<div id="objectList"></div>
+
+</div>
+
+
+<!-- =========================================================
+     INFORMATION
+========================================================= -->
+
+<div class="card">
+
+<h3>ℹ️ Sistem V4</h3>
+
+<div class="tech-info">
+
+<b>Fitur utama:</b>
+
+<ul>
+
+<li>MobileNet visual embedding</li>
+
+<li>Cosine similarity</li>
+
+<li>Histogram warna</li>
+
+<li>Analisis struktur/edge</li>
+
+<li>Confidence score</li>
+
+<li>IndexedDB database</li>
+
+<li>Berjalan langsung di browser</li>
+
+<li>Tidak membutuhkan server database</li>
+
+</ul>
+
+<b>Bobot pencocokan:</b>
+
+<br>
+
+MobileNet : 75%
+
+<br>
+
+Warna : 15%
+
+<br>
+
+Struktur : 10%
+
+</div>
+
+</div>
+
+
+</div>
+
+
+<!-- =========================================================
+     CANVAS
+========================================================= -->
+
+<canvas
+    id="featureCanvas"
+    width="224"
+    height="224"
+    style="display:none;">
+</canvas>
+
+<canvas
+    id="analysisCanvas"
+    width="100"
+    height="100"
+    style="display:none;">
+</canvas>
+
+
+<script>
+
+/* =========================================================
+   1. DATABASE
+========================================================= */
+
+const db = new Dexie("ObjekDatabaseAkuratV4");
+
+db.version(1).stores({
+
+    items: "++id, name, description"
+
+});
+
+
+/* =========================================================
+   2. DOM
+========================================================= */
+
+const video =
+    document.getElementById("cameraStream");
+
+const recognizeBtn =
+    document.getElementById("recognizeBtn");
+
+const cameraContainer =
+    document.getElementById("cameraContainer");
+
+const resultContainer =
+    document.getElementById("resultContainer");
+
+const recognizedResult =
+    document.getElementById("recognizedResult");
+
+const unrecognizedResult =
+    document.getElementById("unrecognizedResult");
+
+const formContainer =
+    document.getElementById("formContainer");
+
+const resultImage =
+    document.getElementById("resultImage");
+
+const resName =
+    document.getElementById("resName");
+
+const resDesc =
+    document.getElementById("resDesc");
+
+const confidenceProgress =
+    document.getElementById("confidenceProgress");
+
+const confidenceText =
+    document.getElementById("confidenceText");
+
+const snapshotPreview =
+    document.getElementById("snapshotPreview");
+
+const objNameInput =
+    document.getElementById("objName");
+
+const objDescInput =
+    document.getElementById("objDesc");
+
+const objectList =
+    document.getElementById("objectList");
+
+const countItems =
+    document.getElementById("countItems");
+
+const featureCanvas =
+    document.getElementById("featureCanvas");
+
+const analysisCanvas =
+    document.getElementById("analysisCanvas");
+
+const modelStatus =
+    document.getElementById("modelStatus");
+
+const modelLoading =
+    document.getElementById("modelLoading");
+
+const modelReady =
+    document.getElementById("modelReady");
+
+
+/* =========================================================
+   3. GLOBAL VARIABLES
+========================================================= */
+
+let cameraStream = null;
+
+let currentBlob = null;
+
+let mobilenetModel = null;
+
+
+/* =========================================================
+   4. LOAD AI MODEL
+========================================================= */
+
+async function loadAIModel() {
+
+    try {
+
+        modelStatus.textContent =
+            "Memuat TensorFlow.js...";
+
+        await tf.ready();
+
+        modelStatus.textContent =
+            "Memuat MobileNet...";
+
+        mobilenetModel =
+            await mobilenet.load({
+                version: 2,
+                alpha: 1.0
             });
+
+        modelLoading.classList.add("hidden");
+
+        modelReady.classList.remove("hidden");
+
+        recognizeBtn.disabled = false;
+
+        console.log(
+            "MobileNet berhasil dimuat"
+        );
+
+    } catch(error) {
+
+        console.error(error);
+
+        modelStatus.textContent =
+            "Gagal memuat model AI.";
+
+        alert(
+            "Model AI gagal dimuat. Pastikan perangkat memiliki koneksi internet saat pertama kali menjalankan aplikasi."
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   5. CAMERA
+========================================================= */
+
+async function startCamera() {
+
+    try {
+
+        if (
+            !navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia
+        ) {
+
+            alert(
+                "Browser tidak mendukung kamera."
+            );
+
+            return;
         }
 
-        // 4. Algoritma Pencocokan Histogram Warna dengan Validasi Ketat
-        function getColorHistogram(ctx, width, height) {
-            const imageData = ctx.getImageData(0, 0, width, height);
-            const data = imageData.data;
-            const histR = new Array(16).fill(0);
-            const histG = new Array(16).fill(0);
-            const histB = new Array(16).fill(0);
+        cameraStream =
+            await navigator.mediaDevices.getUserMedia({
 
-            for (let i = 0; i < data.length; i += 4) {
-                const r = Math.floor(data[i] / 16);
-                const g = Math.floor(data[i + 1] / 16);
-                const b = Math.floor(data[i + 2] / 16);
-                
-                histR[r]++;
-                histG[g]++;
-                histB[b]++;
-            }
+                video: {
 
-            const totalPixels = width * height;
-            return [
-                ...histR.map(v => v / totalPixels),
-                ...histG.map(v => v / totalPixels),
-                ...histB.map(v => v / totalPixels)
-            ];
-        }
+                    facingMode: {
+                        ideal: "environment"
+                    },
 
-        function compareHistograms(hist1, hist2) {
-            let similarity = 0;
-            for (let i = 0; i < hist1.length; i++) {
-                similarity += Math.min(hist1[i], hist2[i]);
-            }
-            return similarity; // Nilai berkisar antara 0.0 hingga 1.0
-        }
+                    width: {
+                        ideal: 1280
+                    },
 
-        async function matchObject(newBlob) {
-            const allItems = await db.items.toArray();
-            if (allItems.length === 0) return null;
+                    height: {
+                        ideal: 720
+                    }
 
-            const newBitmap = await createImageBitmap(newBlob);
-            const canvasMatch = document.createElement('canvas');
-            canvasMatch.width = 100;
-            canvasMatch.height = 100;
-            const ctxMatch = canvasMatch.getContext('2d');
-            ctxMatch.drawImage(newBitmap, 0, 0, 100, 100);
-            
-            const newHist = getColorHistogram(ctxMatch, 100, 100);
+                },
 
-            let bestMatch = null;
-            let highestSimilarity = 0;
-            const THRESHOLD = 0.75; // Dinaikkan menjadi 75% agar lebih selektif
+                audio: false
 
-            for (let item of allItems) {
-                const itemBitmap = await createImageBitmap(item.image);
-                ctxMatch.clearRect(0, 0, 100, 100);
-                ctxMatch.drawImage(itemBitmap, 0, 0, 100, 100);
-                
-                const itemHist = getColorHistogram(ctxMatch, 100, 100);
-                const similarity = compareHistograms(newHist, itemHist);
-
-                if (similarity > highestSimilarity) {
-                    highestSimilarity = similarity;
-                    bestMatch = item;
-                }
-            }
-
-            // Validasi mutlak: Jika kemiripan di bawah threshold, anggap tidak dikenal (null)
-            return highestSimilarity >= THRESHOLD ? bestMatch : null;
-        }
-
-        // 5. Interaksi Tombol "Kenali Objek"
-        recognizeBtn.addEventListener('click', async () => {
-            currentBlob = await captureSnapshot();
-            const matchedItem = await matchObject(currentBlob);
-
-            cameraContainer.classList.add('hidden');
-            resultContainer.classList.remove('hidden');
-
-            if (matchedItem) {
-                // Fitur 4: Objek Dikenal
-                recognizedResult.classList.remove('hidden');
-                unrecognizedResult.classList.add('hidden');
-                
-                resName.textContent = matchedItem.name;
-                resDesc.textContent = matchedItem.description;
-                resImage.src = URL.createObjectURL(matchedItem.image);
-            } else {
-                // Fitur 3: Objek Tidak Dikenal (Muncul Tombol Simpan)
-                recognizedResult.classList.add('hidden');
-                unrecognizedResult.classList.remove('hidden');
-            }
-        });
-
-        // Pindah ke Form Pendaftaran Objek Baru
-        goToRegisterBtn.addEventListener('click', () => {
-            resultContainer.classList.add('hidden');
-            formContainer.classList.remove('hidden');
-            snapshotPreview.src = URL.createObjectURL(currentBlob);
-        });
-
-        // Tombol Kembali ke Kamera
-        backToCameraBtn.addEventListener('click', () => {
-            resultContainer.classList.add('hidden');
-            cameraContainer.classList.remove('hidden');
-        });
-
-        // Batal Form
-        cancelFormBtn.addEventListener('click', () => {
-            formContainer.classList.add('hidden');
-            cameraContainer.classList.remove('hidden');
-            objNameInput.value = '';
-            objDescInput.value = '';
-        });
-
-        // Fitur 1: Simpan Objek Baru ke Database
-        saveBtn.addEventListener('click', async () => {
-            const name = objNameInput.value.trim();
-            const description = objDescInput.value.trim();
-
-            if (!name || !currentBlob) {
-                alert("Nama objek wajib diisi!");
-                return;
-            }
-
-            await db.items.add({
-                name: name,
-                description: description,
-                image: currentBlob
             });
 
-            alert("Objek berhasil disimpan ke database!");
-            cancelFormBtn.click();
-            updateDatabaseUI();
-        });
+        video.srcObject =
+            cameraStream;
 
-        // Perbarui Daftar Tampilan Database di Bawah
-        async function updateDatabaseUI() {
-            const allItems = await db.items.toArray();
-            countItems.textContent = allItems.length;
-            objectList.innerHTML = '';
-            
-            if (allItems.length === 0) {
-                objectList.innerHTML = '<li>Belum ada data objek tersimpan.</li>';
-                return;
-            }
+    }
 
-            allItems.forEach(item => {
-                const li = document.createElement('li');
-                li.textContent = `${item.name} - ${item.description}`;
-                objectList.appendChild(li);
-            });
-        }
-    </script>
+    catch(error) {
 
-</body>
-</html>
+        console.error(error);
+
+        alert(
+            "Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan."
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   6. SNAPSHOT
+========================================================= */
+
+function captureSnapshot() {
+
+    return new Promise((resolve) => {
+
+        const width =
+            video.videoWidth || 640;
+
+        const height =
+            video.videoHeight || 480;
+
+        const canvas =
+            document.createElement("canvas");
+
+        canvas.width = width;
+
+        canvas.height = height;
+
+        const ctx =
+            canvas.getContext("2d");
+
+        ctx.drawImage(
+            video,
+            0,
+            0,
+            width,
+            height
+        );
+
+        canvas.toBlob(
+
+            blob => {
+
+                resolve(blob);
+
+            },
+
+            "image/jpeg",
+
+            0.90
+
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   7. IMAGE TO CANVAS
+========================================================= */
+
+async function blobToCanvas(
+    blob,
+    canvas,
+    width,
+    height
+) {
+
+    const bitmap =
+        await createImageBitmap(blob);
+
+    canvas.width = width;
+
+    canvas.height = height;
+
+    const ctx =
+        canvas.getContext("2d");
+
+    ctx.clearRect(
+        0,
+        0,
+        width,
+        height
+    );
+
+    ctx.drawImage(
+        bitmap,
+        0,
+        0,
+        width,
+        height
+    );
+
+    if (bitmap.close) {
+
+        bitmap.close();
+
+    }
+
+    return ctx;
+
+}
+
+
+/* =========================================================
+   8. MOBILE NET EMBEDDING
+========================================================= */
+
+async function extractEmbedding(blob) {
+
+    const ctx =
+        await blobToCanvas(
+            blob,
+            featureCanvas,
+            224,
+            224
+        );
+
+    /*
+       infer(..., true)
+
+       mengambil representasi fitur internal
+       MobileNet, bukan hanya label klasifikasi.
+    */
+
+    const tensor =
+        tf.browser.fromPixels(
+            featureCanvas
+        );
+
+    const embeddingTensor =
+        mobilenetModel.infer(
+            tensor,
+            true
+        );
+
+    const values =
+        await embeddingTensor.data();
+
+    tensor.dispose();
+
+    embeddingTensor.dispose();
+
+    return Array.from(values);
+
+}
+
+
+/* =========================================================
+   9. VECTOR NORMALIZATION
+========================================================= */
+
+function normalizeVector(vector) {
+
+    let sum = 0;
+
+    for (const value of vector) {
+
+        sum += value * value;
+
+    }
+
+    const magnitude =
+        Math.sqrt(sum);
+
+    if (magnitude === 0) {
+
+        return vector.map(() => 0);
+
+    }
+
+    return vector.map(
+        value => value / magnitude
+    );
+
+}
+
+
+/* =========================================================
+   10. COSINE SIMILARITY
+========================================================= */
+
+function cosineSimilarity(
+    vectorA,
+    vectorB
+) {
+
+    const a =
+        normalizeVector(vectorA);
+
+    const b =
+        normalizeVector(vectorB);
+
+    let dot = 0;
+
+    for (
+        let i = 0;
+        i < Math.min(a.length, b.length);
+        i++
+    ) {
+
+        dot +=
+            a[i] * b[i];
+
+    }
+
+    /*
+       Nilai normal:
+       -1 sampai 1
+
+       Kita konversikan ke
+       0 sampai 1.
+    */
+
+    return (dot + 1) / 2;
+
+}
+
+
+/* =========================================================
+   11. COLOR HISTOGRAM
+========================================================= */
+
+function getColorHistogram(
+    ctx,
+    width,
+    height
+) {
+
+    const imageData =
+        ctx.getImageData(
+            0,
+            0,
+            width,
+            height
+        );
+
+    const data =
+        imageData.data;
+
+    const histR =
+        new Array(16).fill(0);
+
+    const histG =
+        new Array(16).fill(0);
+
+    const histB =
+        new Array(16).fill(0);
+
+    for (
+        let i = 0;
+        i < data.length;
+        i += 4
+    ) {
+
+        const r =
+            Math.floor(
+                data[i] / 16
+            );
+
+        const g =
+            Math.floor(
+                data[i + 1] / 16
+            );
+
+        const b =
+            Math.floor(
+                data[i + 2] / 16
+            );
+
+        histR[r]++;
+
+        histG[g]++;
+
+        histB[b]++;
+
+    }
+
+    const total =
+        width * height;
+
+    return [
+
+        ...histR.map(
+            value => value / total
+        ),
+
+        ...histG.map(
+            value => value / total
+        ),
+
+        ...histB.map(
+            value => value / total
+        )
+
+    ];
+
+}
+
+
+/* =========================================================
+   12. HISTOGRAM SIMILARITY
+========================================================= */
+
+function histogramSimilarity(
+    histA,
+    histB
+) {
+
+    let similarity = 0;
+
+    for (
+        let i = 0;
+        i < histA.length;
+        i++
+    ) {
+
+        similarity +=
+            Math.min(
+                histA[i],
+                histB[i]
+            );
+
+    }
+
+    return similarity;
+
+}
+
+
+/* =========================================================
+   13. EDGE / STRUCTURE FEATURE
+========================================================= */
+
+function getEdgeFeature(
+    ctx,
+    width,
+    height
+) {
+
+    const imageData =
+        ctx.getImageData(
+            0,
+            0,
+            width,
+            height
+        );
+
+    const data =
+        imageData.data;
+
+    const gray =
+        new Float32Array(
+            width * height
+        );
+
+    for (
+        let y = 0;
+        y < height;
+        y++
+    ) {
+
+        for (
+            let x = 0;
+    
