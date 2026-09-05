@@ -1,345 +1,783 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
 
-<title>Aplikasi Pengenalan Objek V4</title>
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
-<!-- =========================================================
+<title>
+    Aplikasi Pengenalan Objek V4.1
+</title>
+
+
+<!-- =====================================================
      DEXIE.JS
-========================================================= -->
-<script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
+     Database lokal IndexedDB
+===================================================== -->
 
-<!-- =========================================================
+<script
+    src="https://unpkg.com/dexie@3.2.4/dist/dexie.js">
+</script>
+
+
+<!-- =====================================================
      TENSORFLOW.JS
-========================================================= -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+===================================================== -->
 
-<!-- =========================================================
+<script
+    src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js">
+</script>
+
+
+<!-- =====================================================
      MOBILENET
-========================================================= -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1"></script>
+===================================================== -->
+
+<script
+    src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js">
+</script>
+
 
 <style>
+
+/* =====================================================
+   GLOBAL
+===================================================== */
 
 * {
     box-sizing: border-box;
 }
 
 body {
-    font-family: Arial, sans-serif;
+
     margin: 0;
+
     padding: 15px;
+
     background: #f2f4f7;
+
     color: #222;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
 }
 
 .container {
+
     width: 100%;
-    max-width: 500px;
+
+    max-width: 520px;
+
     margin: auto;
+
 }
 
-h2 {
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.header {
+
     text-align: center;
+
+    margin-bottom: 15px;
+
+}
+
+.header h2 {
+
     margin-bottom: 5px;
+
 }
 
 .subtitle {
-    text-align: center;
+
     color: #666;
+
     font-size: 13px;
-    margin-bottom: 15px;
+
 }
 
-/* =========================================================
-   CAMERA
-========================================================= */
 
-.camera-box {
-    background: #000;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-}
-
-video {
-    width: 100%;
-    display: block;
-    background: #000;
-}
-
-.camera-info {
-    padding: 8px;
-    background: #111;
-    color: white;
-    font-size: 12px;
-    text-align: center;
-}
-
-/* =========================================================
-   BUTTON
-========================================================= */
-
-button {
-    width: 100%;
-    border: none;
-    border-radius: 8px;
-    padding: 13px;
-    margin-top: 10px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn-green {
-    background: #28a745;
-    color: white;
-}
-
-.btn-blue {
-    background: #007bff;
-    color: white;
-}
-
-.btn-gray {
-    background: #6c757d;
-    color: white;
-}
-
-.btn-yellow {
-    background: #ffc107;
-    color: #111;
-}
-
-.btn-red {
-    background: #dc3545;
-    color: white;
-}
-
-/* =========================================================
+/* =====================================================
    CARD
-========================================================= */
+===================================================== */
 
 .card {
+
     background: white;
+
     padding: 15px;
+
+    border-radius: 12px;
+
     margin-top: 15px;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+
+    box-shadow:
+        0 2px 8px
+        rgba(0,0,0,0.08);
+
 }
 
 .hidden {
+
     display: none !important;
+
 }
 
-/* =========================================================
+
+/* =====================================================
+   STATUS
+===================================================== */
+
+.status-row {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 9px;
+
+    margin-bottom: 7px;
+
+    border-radius: 7px;
+
+    background: #f5f5f5;
+
+    font-size: 13px;
+
+}
+
+.status-label {
+
+    font-weight: bold;
+
+}
+
+.status-value {
+
+    font-weight: bold;
+
+}
+
+.status-ok {
+
+    color: #198754;
+
+}
+
+.status-warning {
+
+    color: #d39e00;
+
+}
+
+.status-error {
+
+    color: #dc3545;
+
+}
+
+.status-loading {
+
+    color: #0d6efd;
+
+}
+
+
+/* =====================================================
+   CAMERA
+===================================================== */
+
+.camera-box {
+
+    position: relative;
+
+    width: 100%;
+
+    background: #000;
+
+    border-radius: 12px;
+
+    overflow: hidden;
+
+}
+
+video {
+
+    width: 100%;
+
+    display: block;
+
+    background: #000;
+
+}
+
+.camera-overlay {
+
+    position: absolute;
+
+    left: 10px;
+
+    right: 10px;
+
+    top: 10px;
+
+    bottom: 10px;
+
+    border:
+        2px solid
+        rgba(255,255,255,0.7);
+
+    border-radius: 10px;
+
+    pointer-events: none;
+
+}
+
+.camera-message {
+
+    padding: 8px;
+
+    background: #111;
+
+    color: white;
+
+    text-align: center;
+
+    font-size: 12px;
+
+}
+
+
+/* =====================================================
+   BUTTON
+===================================================== */
+
+button {
+
+    width: 100%;
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 13px;
+
+    margin-top: 10px;
+
+    font-size: 16px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+}
+
+button:disabled {
+
+    opacity: 0.5;
+
+    cursor: not-allowed;
+
+}
+
+.btn-green {
+
+    background: #198754;
+
+    color: white;
+
+}
+
+.btn-blue {
+
+    background: #0d6efd;
+
+    color: white;
+
+}
+
+.btn-gray {
+
+    background: #6c757d;
+
+    color: white;
+
+}
+
+.btn-yellow {
+
+    background: #ffc107;
+
+    color: #111;
+
+}
+
+.btn-red {
+
+    background: #dc3545;
+
+    color: white;
+
+}
+
+.btn-dark {
+
+    background: #212529;
+
+    color: white;
+
+}
+
+
+/* =====================================================
    RESULT
-========================================================= */
+===================================================== */
 
 .result-title {
+
     text-align: center;
+
     font-size: 22px;
-    margin-bottom: 10px;
+
+    font-weight: bold;
+
+    margin-bottom: 12px;
+
 }
 
 .result-image {
+
+    display: block;
+
     width: 100%;
+
     max-height: 350px;
+
     object-fit: contain;
+
     background: #111;
-    border-radius: 8px;
+
+    border-radius: 9px;
+
 }
 
+
+/* =====================================================
+   CONFIDENCE
+===================================================== */
+
 .confidence-box {
-    margin-top: 15px;
-    background: #f1f3f5;
-    border-radius: 8px;
+
+    background: #f5f5f5;
+
     padding: 12px;
+
+    border-radius: 9px;
+
+    margin-top: 15px;
+
 }
 
 .confidence-bar {
+
     width: 100%;
-    height: 20px;
-    background: #ddd;
-    border-radius: 10px;
-    overflow: hidden;
+
+    height: 22px;
+
     margin-top: 8px;
+
+    background: #ddd;
+
+    border-radius: 12px;
+
+    overflow: hidden;
+
 }
 
 .confidence-progress {
+
     height: 100%;
+
     width: 0%;
-    background: #28a745;
-    transition: width 0.4s;
+
+    background: #198754;
+
+    transition:
+        width 0.4s ease;
+
 }
 
 .confidence-text {
+
     text-align: center;
+
     font-weight: bold;
-    margin-top: 7px;
+
+    margin-top: 8px;
+
 }
 
-/* =========================================================
+
+/* =====================================================
+   SCORE DETAIL
+===================================================== */
+
+.score-detail {
+
+    margin-top: 12px;
+
+    font-size: 13px;
+
+}
+
+.score-row {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    padding: 5px 0;
+
+    border-bottom:
+        1px solid #eee;
+
+}
+
+
+/* =====================================================
    FORM
-========================================================= */
+===================================================== */
 
 input,
 textarea {
+
     width: 100%;
-    padding: 12px;
+
     margin-top: 10px;
-    border: 1px solid #ccc;
+
+    padding: 12px;
+
+    border:
+        1px solid #ccc;
+
     border-radius: 7px;
+
     font-size: 16px;
+
 }
 
 textarea {
-    min-height: 100px;
+
+    min-height: 90px;
+
     resize: vertical;
+
 }
 
 .preview {
+
     width: 100%;
-    border-radius: 8px;
+
     margin-top: 10px;
+
+    border-radius: 8px;
+
 }
 
-/* =========================================================
+
+/* =====================================================
    DATABASE
-========================================================= */
+===================================================== */
 
 .database-item {
+
     background: #f8f9fa;
-    border: 1px solid #ddd;
+
+    border:
+        1px solid #ddd;
+
+    padding: 12px;
+
     border-radius: 8px;
-    padding: 10px;
+
     margin-top: 8px;
+
 }
 
 .database-name {
-    font-weight: bold;
+
     font-size: 16px;
+
+    font-weight: bold;
+
 }
 
 .database-desc {
-    font-size: 13px;
-    color: #666;
-    margin-top: 4px;
-}
 
-.database-meta {
-    font-size: 11px;
-    color: #888;
     margin-top: 5px;
+
+    font-size: 13px;
+
+    color: #666;
+
 }
 
-.delete-btn {
-    background: #dc3545;
-    color: white;
-    padding: 7px;
-    margin-top: 7px;
-    font-size: 12px;
+.database-status {
+
+    margin-top: 5px;
+
+    font-size: 11px;
+
+    color: #198754;
+
 }
 
-/* =========================================================
+.database-date {
+
+    margin-top: 3px;
+
+    font-size: 10px;
+
+    color: #999;
+
+}
+
+
+/* =====================================================
    LOADING
-========================================================= */
+===================================================== */
 
-.loading {
+.loading-box {
+
     text-align: center;
-    padding: 15px;
+
+    padding: 10px;
+
 }
 
 .spinner {
-    border: 4px solid #ddd;
-    border-top: 4px solid #007bff;
-    border-radius: 50%;
-    width: 35px;
-    height: 35px;
-    animation: spin 1s linear infinite;
+
+    width: 32px;
+
+    height: 32px;
+
     margin: auto;
+
+    border:
+        4px solid #ddd;
+
+    border-top:
+        4px solid #0d6efd;
+
+    border-radius: 50%;
+
+    animation:
+        spin 1s linear infinite;
+
 }
 
 @keyframes spin {
-    100% {
+
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
         transform: rotate(360deg);
     }
+
 }
 
-.status {
-    text-align: center;
-    font-size: 13px;
-    margin-top: 10px;
-    color: #555;
-}
 
-/* =========================================================
-   TECHNICAL INFO
-========================================================= */
+/* =====================================================
+   TECH INFO
+===================================================== */
 
 .tech-info {
+
     font-size: 12px;
-    color: #666;
+
+    line-height: 1.6;
+
+    color: #555;
+
+}
+
+.tech-info code {
+
+    background: #eee;
+
+    padding: 2px 4px;
+
+    border-radius: 3px;
+
+}
+
+
+/* =====================================================
+   ERROR BOX
+===================================================== */
+
+.error-box {
+
+    background: #f8d7da;
+
+    color: #842029;
+
+    border:
+        1px solid #f5c2c7;
+
+    padding: 12px;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+
     line-height: 1.5;
+
+}
+
+
+/* =====================================================
+   EMPTY
+===================================================== */
+
+.empty {
+
+    text-align: center;
+
+    padding: 15px;
+
+    color: #777;
+
+    font-size: 13px;
+
 }
 
 </style>
+
 </head>
+
 
 <body>
 
+
 <div class="container">
 
-<h2>🔎 Pengenalan Objek V4</h2>
 
-<div class="subtitle">
-Pengenalan berbasis fitur visual + MobileNet
+<!-- =====================================================
+     HEADER
+===================================================== -->
+
+<div class="header">
+
+    <h2>
+        🔎 Pengenalan Objek V4.1
+    </h2>
+
+    <div class="subtitle">
+        Visual Feature Matching berbasis MobileNet
+    </div>
+
 </div>
 
-<!-- =========================================================
-     MODEL STATUS
-========================================================= -->
+
+<!-- =====================================================
+     SYSTEM STATUS
+===================================================== -->
 
 <div class="card">
 
-<div id="modelLoading">
+    <h3>
+        ⚙️ Status Sistem
+    </h3>
 
-    <div class="loading">
 
-        <div class="spinner"></div>
+    <div class="status-row">
 
-        <p id="modelStatus">
-            Memuat model AI...
-        </p>
+        <span class="status-label">
+            Kamera
+        </span>
+
+        <span
+            id="cameraStatus"
+            class="status-value status-loading">
+
+            Menyiapkan...
+
+        </span>
+
+    </div>
+
+
+    <div class="status-row">
+
+        <span class="status-label">
+            TensorFlow.js
+        </span>
+
+        <span
+            id="tfStatus"
+            class="status-value status-loading">
+
+            Menunggu...
+
+        </span>
+
+    </div>
+
+
+    <div class="status-row">
+
+        <span class="status-label">
+            MobileNet
+        </span>
+
+        <span
+            id="modelStatus"
+            class="status-value status-loading">
+
+            Memuat...
+
+        </span>
+
+    </div>
+
+
+    <div
+        id="modelError"
+        class="error-box hidden">
 
     </div>
 
 </div>
 
-<div id="modelReady"
-     class="hidden"
-     style="text-align:center;color:#28a745;font-weight:bold;">
 
-    ✓ Model AI siap digunakan
-
-</div>
-
-</div>
-
-
-<!-- =========================================================
+<!-- =====================================================
      CAMERA
-========================================================= -->
+===================================================== -->
 
-<div id="cameraContainer">
+<div
+    id="cameraContainer"
+    class="card">
+
+    <h3>
+        📷 Kamera
+    </h3>
+
 
     <div class="camera-box">
 
@@ -349,59 +787,97 @@ Pengenalan berbasis fitur visual + MobileNet
             playsinline>
         </video>
 
-        <div class="camera-info">
-            Gunakan kamera belakang dan arahkan ke objek
+        <div class="camera-overlay"></div>
+
+        <div class="camera-message">
+
+            Arahkan kamera ke objek
+            kemudian tekan "Kenali Objek"
+
         </div>
 
     </div>
+
 
     <button
         id="recognizeBtn"
         class="btn-green"
         disabled>
 
-        🔍 Kenali Objek
+        ⏳ Menunggu AI...
+
+    </button>
+
+
+    <button
+        id="restartCameraBtn"
+        class="btn-blue">
+
+        🔄 Aktifkan Ulang Kamera
 
     </button>
 
 </div>
 
 
-<!-- =========================================================
+<!-- =====================================================
      RESULT
-========================================================= -->
+===================================================== -->
 
-<div id="resultContainer"
-     class="hidden">
+<div
+    id="resultContainer"
+    class="hidden">
 
-    <!-- OBJECT KNOWN -->
 
-    <div id="recognizedResult"
-         class="card hidden">
+    <!-- =================================================
+         RECOGNIZED
+    ================================================= -->
+
+    <div
+        id="recognizedResult"
+        class="card hidden">
 
         <div class="result-title">
-            ✅ Objek Dikenali
+
+            ✅ OBJEK DIKENALI
+
         </div>
+
 
         <img
             id="resultImage"
-            class="result-image">
+            class="result-image"
+            alt="Foto objek referensi">
+
 
         <p>
-            <strong>Nama:</strong>
+
+            <strong>
+                Nama:
+            </strong>
+
             <span id="resName"></span>
+
         </p>
 
+
         <p>
-            <strong>Deskripsi:</strong>
+
+            <strong>
+                Deskripsi:
+            </strong>
+
             <span id="resDesc"></span>
+
         </p>
+
 
         <div class="confidence-box">
 
-            <div>
-                <strong>Tingkat Kemiripan</strong>
-            </div>
+            <strong>
+                Tingkat Kemiripan
+            </strong>
+
 
             <div class="confidence-bar">
 
@@ -412,9 +888,69 @@ Pengenalan berbasis fitur visual + MobileNet
 
             </div>
 
+
             <div
                 id="confidenceText"
                 class="confidence-text">
+
+            </div>
+
+
+            <div class="score-detail">
+
+
+                <div class="score-row">
+
+                    <span>
+                        MobileNet
+                    </span>
+
+                    <strong
+                        id="mobileScore">
+                    </strong>
+
+                </div>
+
+
+                <div class="score-row">
+
+                    <span>
+                        Warna
+                    </span>
+
+                    <strong
+                        id="colorScore">
+                    </strong>
+
+                </div>
+
+
+                <div class="score-row">
+
+                    <span>
+                        Struktur
+                    </span>
+
+                    <strong
+                        id="edgeScore">
+                    </strong>
+
+                </div>
+
+
+                <div class="score-row">
+
+                    <span>
+                        Skor Akhir
+                    </span>
+
+                    <strong
+                        id="finalScore">
+                    </strong>
+
+                </div>
+
+
             </div>
 
         </div>
@@ -422,20 +958,30 @@ Pengenalan berbasis fitur visual + MobileNet
     </div>
 
 
-    <!-- UNKNOWN -->
+    <!-- =================================================
+         UNKNOWN
+    ================================================= -->
 
-    <div id="unrecognizedResult"
-         class="card hidden"
-         style="background:#fff3cd;">
+    <div
+        id="unrecognizedResult"
+        class="card hidden"
+        style="background:#fff3cd;">
 
         <div class="result-title">
-            ❓ Objek Tidak Dikenal
+
+            ❓ OBJEK TIDAK DIKENAL
+
         </div>
 
+
         <p>
-            Tidak ditemukan objek dengan tingkat kemiripan
-            yang cukup tinggi di database.
+
+            Tidak ditemukan objek dengan
+            tingkat kemiripan yang cukup
+            tinggi pada database.
+
         </p>
+
 
         <button
             id="goToRegisterBtn"
@@ -459,38 +1005,60 @@ Pengenalan berbasis fitur visual + MobileNet
 </div>
 
 
-<!-- =========================================================
+<!-- =====================================================
      REGISTER
-========================================================= -->
+===================================================== -->
 
-<div id="formContainer"
-     class="hidden">
+<div
+    id="formContainer"
+    class="hidden">
 
     <div class="card">
 
-        <h3>📦 Daftarkan Objek Baru</h3>
+        <h3>
+            📦 Daftarkan Objek Baru
+        </h3>
+
+
+        <p
+            style="
+                font-size:13px;
+                color:#666;
+            ">
+
+            Foto yang diambil akan diproses
+            menjadi fitur visual dan disimpan
+            di database lokal.
+
+        </p>
+
 
         <img
             id="snapshotPreview"
-            class="preview">
+            class="preview"
+            alt="Preview objek">
+
 
         <input
             type="text"
             id="objName"
             placeholder="Nama objek">
 
+
         <textarea
             id="objDesc"
             placeholder="Deskripsi objek">
         </textarea>
 
+
         <button
             id="saveBtn"
             class="btn-green">
 
-            💾 Simpan Objek
+            💾 Simpan ke Database
 
         </button>
+
 
         <button
             id="cancelFormBtn"
@@ -505,79 +1073,119 @@ Pengenalan berbasis fitur visual + MobileNet
 </div>
 
 
-<!-- =========================================================
+<!-- =====================================================
      DATABASE
-========================================================= -->
+===================================================== -->
 
 <div class="card">
 
-<h3>
-    📚 Database Lokal
-    (<span id="countItems">0</span>)
-</h3>
+    <h3>
 
-<div id="objectList"></div>
+        📚 Database Lokal
+        (<span id="countItems">0</span>)
+
+    </h3>
+
+
+    <div id="objectList">
+
+    </div>
+
+
+    <button
+        id="clearDatabaseBtn"
+        class="btn-red">
+
+        🗑 Hapus Semua Database
+
+    </button>
 
 </div>
 
 
-<!-- =========================================================
+<!-- =====================================================
      INFORMATION
-========================================================= -->
+===================================================== -->
 
 <div class="card">
 
-<h3>ℹ️ Sistem V4</h3>
+    <h3>
+        ℹ️ Tentang V4.1
+    </h3>
 
-<div class="tech-info">
 
-<b>Fitur utama:</b>
+    <div class="tech-info">
 
-<ul>
+        <p>
+            Sistem menggunakan beberapa
+            karakteristik gambar secara bersamaan.
+        </p>
 
-<li>MobileNet visual embedding</li>
 
-<li>Cosine similarity</li>
+        <ul>
 
-<li>Histogram warna</li>
+            <li>
+                MobileNet Visual Embedding:
+                <b>75%</b>
+            </li>
 
-<li>Analisis struktur/edge</li>
+            <li>
+                Histogram warna:
+                <b>15%</b>
+            </li>
 
-<li>Confidence score</li>
+            <li>
+                Struktur / edge:
+                <b>10%</b>
+            </li>
 
-<li>IndexedDB database</li>
+            <li>
+                Database:
+                <b>IndexedDB</b>
+            </li>
 
-<li>Berjalan langsung di browser</li>
+            <li>
+                Pemrosesan:
+                <b>lokal di browser</b>
+            </li>
 
-<li>Tidak membutuhkan server database</li>
+        </ul>
 
-</ul>
 
-<b>Bobot pencocokan:</b>
+        <p>
 
-<br>
+            Threshold pengenalan:
 
-MobileNet : 75%
+            <code>
+                0.78
+            </code>
 
-<br>
+        </p>
 
-Warna : 15%
 
-<br>
+        <p>
 
-Struktur : 10%
+            <b>Catatan:</b>
+
+            Skor 78% bukan berarti
+            akurasi sistem 78%.
+            Skor tersebut adalah tingkat
+            kemiripan antara gambar baru
+            dan gambar referensi.
+
+        </p>
+
+    </div>
 
 </div>
 
-</div>
-
 
 </div>
 
 
-<!-- =========================================================
-     CANVAS
-========================================================= -->
+<!-- =====================================================
+     HIDDEN CANVAS
+===================================================== -->
 
 <canvas
     id="featureCanvas"
@@ -585,6 +1193,7 @@ Struktur : 10%
     height="224"
     style="display:none;">
 </canvas>
+
 
 <canvas
     id="analysisCanvas"
@@ -596,92 +1205,229 @@ Struktur : 10%
 
 <script>
 
+
 /* =========================================================
    1. DATABASE
 ========================================================= */
 
-const db = new Dexie("ObjekDatabaseAkuratV4");
+const db =
+    new Dexie(
+        "ObjekDatabaseAkuratV41"
+    );
+
 
 db.version(1).stores({
 
-    items: "++id, name, description"
+    items:
+        "++id,name,description,createdAt"
 
 });
 
 
 /* =========================================================
-   2. DOM
+   2. DOM ELEMENT
 ========================================================= */
 
 const video =
-    document.getElementById("cameraStream");
+    document.getElementById(
+        "cameraStream"
+    );
+
 
 const recognizeBtn =
-    document.getElementById("recognizeBtn");
+    document.getElementById(
+        "recognizeBtn"
+    );
 
-const cameraContainer =
-    document.getElementById("cameraContainer");
 
-const resultContainer =
-    document.getElementById("resultContainer");
+const restartCameraBtn =
+    document.getElementById(
+        "restartCameraBtn"
+    );
 
-const recognizedResult =
-    document.getElementById("recognizedResult");
 
-const unrecognizedResult =
-    document.getElementById("unrecognizedResult");
+const cameraStatus =
+    document.getElementById(
+        "cameraStatus"
+    );
 
-const formContainer =
-    document.getElementById("formContainer");
 
-const resultImage =
-    document.getElementById("resultImage");
+const tfStatus =
+    document.getElementById(
+        "tfStatus"
+    );
 
-const resName =
-    document.getElementById("resName");
-
-const resDesc =
-    document.getElementById("resDesc");
-
-const confidenceProgress =
-    document.getElementById("confidenceProgress");
-
-const confidenceText =
-    document.getElementById("confidenceText");
-
-const snapshotPreview =
-    document.getElementById("snapshotPreview");
-
-const objNameInput =
-    document.getElementById("objName");
-
-const objDescInput =
-    document.getElementById("objDesc");
-
-const objectList =
-    document.getElementById("objectList");
-
-const countItems =
-    document.getElementById("countItems");
-
-const featureCanvas =
-    document.getElementById("featureCanvas");
-
-const analysisCanvas =
-    document.getElementById("analysisCanvas");
 
 const modelStatus =
-    document.getElementById("modelStatus");
+    document.getElementById(
+        "modelStatus"
+    );
 
-const modelLoading =
-    document.getElementById("modelLoading");
 
-const modelReady =
-    document.getElementById("modelReady");
+const modelError =
+    document.getElementById(
+        "modelError"
+    );
+
+
+const cameraContainer =
+    document.getElementById(
+        "cameraContainer"
+    );
+
+
+const resultContainer =
+    document.getElementById(
+        "resultContainer"
+    );
+
+
+const recognizedResult =
+    document.getElementById(
+        "recognizedResult"
+    );
+
+
+const unrecognizedResult =
+    document.getElementById(
+        "unrecognizedResult"
+    );
+
+
+const formContainer =
+    document.getElementById(
+        "formContainer"
+    );
+
+
+const resultImage =
+    document.getElementById(
+        "resultImage"
+    );
+
+
+const resName =
+    document.getElementById(
+        "resName"
+    );
+
+
+const resDesc =
+    document.getElementById(
+        "resDesc"
+    );
+
+
+const confidenceProgress =
+    document.getElementById(
+        "confidenceProgress"
+    );
+
+
+const confidenceText =
+    document.getElementById(
+        "confidenceText"
+    );
+
+
+const mobileScore =
+    document.getElementById(
+        "mobileScore"
+    );
+
+
+const colorScore =
+    document.getElementById(
+        "colorScore"
+    );
+
+
+const edgeScore =
+    document.getElementById(
+        "edgeScore"
+    );
+
+
+const finalScore =
+    document.getElementById(
+        "finalScore"
+    );
+
+
+const snapshotPreview =
+    document.getElementById(
+        "snapshotPreview"
+    );
+
+
+const objNameInput =
+    document.getElementById(
+        "objName"
+    );
+
+
+const objDescInput =
+    document.getElementById(
+        "objDesc"
+    );
+
+
+const saveBtn =
+    document.getElementById(
+        "saveBtn"
+    );
+
+
+const cancelFormBtn =
+    document.getElementById(
+        "cancelFormBtn"
+    );
+
+
+const goToRegisterBtn =
+    document.getElementById(
+        "goToRegisterBtn"
+    );
+
+
+const backToCameraBtn =
+    document.getElementById(
+        "backToCameraBtn"
+    );
+
+
+const objectList =
+    document.getElementById(
+        "objectList"
+    );
+
+
+const countItems =
+    document.getElementById(
+        "countItems"
+    );
+
+
+const clearDatabaseBtn =
+    document.getElementById(
+        "clearDatabaseBtn"
+    );
+
+
+const featureCanvas =
+    document.getElementById(
+        "featureCanvas"
+    );
+
+
+const analysisCanvas =
+    document.getElementById(
+        "analysisCanvas"
+    );
 
 
 /* =========================================================
-   3. GLOBAL VARIABLES
+   3. GLOBAL VARIABLE
 ========================================================= */
 
 let cameraStream = null;
@@ -690,472 +1436,24 @@ let currentBlob = null;
 
 let mobilenetModel = null;
 
-
-/* =========================================================
-   4. LOAD AI MODEL
-========================================================= */
-
-async function loadAIModel() {
-
-    try {
-
-        modelStatus.textContent =
-            "Memuat TensorFlow.js...";
-
-        await tf.ready();
-
-        modelStatus.textContent =
-            "Memuat MobileNet...";
-
-        mobilenetModel =
-            await mobilenet.load({
-                version: 2,
-                alpha: 1.0
-            });
-
-        modelLoading.classList.add("hidden");
-
-        modelReady.classList.remove("hidden");
-
-        recognizeBtn.disabled = false;
-
-        console.log(
-            "MobileNet berhasil dimuat"
-        );
-
-    } catch(error) {
-
-        console.error(error);
-
-        modelStatus.textContent =
-            "Gagal memuat model AI.";
-
-        alert(
-            "Model AI gagal dimuat. Pastikan perangkat memiliki koneksi internet saat pertama kali menjalankan aplikasi."
-        );
-
-    }
-
-}
+let modelReady = false;
 
 
 /* =========================================================
-   5. CAMERA
+   4. STATUS HELPER
 ========================================================= */
 
-async function startCamera() {
-
-    try {
-
-        if (
-            !navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia
-        ) {
-
-            alert(
-                "Browser tidak mendukung kamera."
-            );
-
-            return;
-        }
-
-        cameraStream =
-            await navigator.mediaDevices.getUserMedia({
-
-                video: {
-
-                    facingMode: {
-                        ideal: "environment"
-                    },
-
-                    width: {
-                        ideal: 1280
-                    },
-
-                    height: {
-                        ideal: 720
-                    }
-
-                },
-
-                audio: false
-
-            });
-
-        video.srcObject =
-            cameraStream;
-
-    }
-
-    catch(error) {
-
-        console.error(error);
-
-        alert(
-            "Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan."
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   6. SNAPSHOT
-========================================================= */
-
-function captureSnapshot() {
-
-    return new Promise((resolve) => {
-
-        const width =
-            video.videoWidth || 640;
-
-        const height =
-            video.videoHeight || 480;
-
-        const canvas =
-            document.createElement("canvas");
-
-        canvas.width = width;
-
-        canvas.height = height;
-
-        const ctx =
-            canvas.getContext("2d");
-
-        ctx.drawImage(
-            video,
-            0,
-            0,
-            width,
-            height
-        );
-
-        canvas.toBlob(
-
-            blob => {
-
-                resolve(blob);
-
-            },
-
-            "image/jpeg",
-
-            0.90
-
-        );
-
-    });
-
-}
-
-
-/* =========================================================
-   7. IMAGE TO CANVAS
-========================================================= */
-
-async function blobToCanvas(
-    blob,
-    canvas,
-    width,
-    height
+function setStatus(
+    element,
+    text,
+    type
 ) {
 
-    const bitmap =
-        await createImageBitmap(blob);
+    element.textContent =
+        text;
 
-    canvas.width = width;
 
-    canvas.height = height;
-
-    const ctx =
-        canvas.getContext("2d");
-
-    ctx.clearRect(
-        0,
-        0,
-        width,
-        height
-    );
-
-    ctx.drawImage(
-        bitmap,
-        0,
-        0,
-        width,
-        height
-    );
-
-    if (bitmap.close) {
-
-        bitmap.close();
-
-    }
-
-    return ctx;
-
-}
-
-
-/* =========================================================
-   8. MOBILE NET EMBEDDING
-========================================================= */
-
-async function extractEmbedding(blob) {
-
-    const ctx =
-        await blobToCanvas(
-            blob,
-            featureCanvas,
-            224,
-            224
-        );
-
-    /*
-       infer(..., true)
-
-       mengambil representasi fitur internal
-       MobileNet, bukan hanya label klasifikasi.
-    */
-
-    const tensor =
-        tf.browser.fromPixels(
-            featureCanvas
-        );
-
-    const embeddingTensor =
-        mobilenetModel.infer(
-            tensor,
-            true
-        );
-
-    const values =
-        await embeddingTensor.data();
-
-    tensor.dispose();
-
-    embeddingTensor.dispose();
-
-    return Array.from(values);
-
-}
-
-
-/* =========================================================
-   9. VECTOR NORMALIZATION
-========================================================= */
-
-function normalizeVector(vector) {
-
-    let sum = 0;
-
-    for (const value of vector) {
-
-        sum += value * value;
-
-    }
-
-    const magnitude =
-        Math.sqrt(sum);
-
-    if (magnitude === 0) {
-
-        return vector.map(() => 0);
-
-    }
-
-    return vector.map(
-        value => value / magnitude
-    );
-
-}
-
-
-/* =========================================================
-   10. COSINE SIMILARITY
-========================================================= */
-
-function cosineSimilarity(
-    vectorA,
-    vectorB
-) {
-
-    const a =
-        normalizeVector(vectorA);
-
-    const b =
-        normalizeVector(vectorB);
-
-    let dot = 0;
-
-    for (
-        let i = 0;
-        i < Math.min(a.length, b.length);
-        i++
-    ) {
-
-        dot +=
-            a[i] * b[i];
-
-    }
-
-    /*
-       Nilai normal:
-       -1 sampai 1
-
-       Kita konversikan ke
-       0 sampai 1.
-    */
-
-    return (dot + 1) / 2;
-
-}
-
-
-/* =========================================================
-   11. COLOR HISTOGRAM
-========================================================= */
-
-function getColorHistogram(
-    ctx,
-    width,
-    height
-) {
-
-    const imageData =
-        ctx.getImageData(
-            0,
-            0,
-            width,
-            height
-        );
-
-    const data =
-        imageData.data;
-
-    const histR =
-        new Array(16).fill(0);
-
-    const histG =
-        new Array(16).fill(0);
-
-    const histB =
-        new Array(16).fill(0);
-
-    for (
-        let i = 0;
-        i < data.length;
-        i += 4
-    ) {
-
-        const r =
-            Math.floor(
-                data[i] / 16
-            );
-
-        const g =
-            Math.floor(
-                data[i + 1] / 16
-            );
-
-        const b =
-            Math.floor(
-                data[i + 2] / 16
-            );
-
-        histR[r]++;
-
-        histG[g]++;
-
-        histB[b]++;
-
-    }
-
-    const total =
-        width * height;
-
-    return [
-
-        ...histR.map(
-            value => value / total
-        ),
-
-        ...histG.map(
-            value => value / total
-        ),
-
-        ...histB.map(
-            value => value / total
-        )
-
-    ];
-
-}
-
-
-/* =========================================================
-   12. HISTOGRAM SIMILARITY
-========================================================= */
-
-function histogramSimilarity(
-    histA,
-    histB
-) {
-
-    let similarity = 0;
-
-    for (
-        let i = 0;
-        i < histA.length;
-        i++
-    ) {
-
-        similarity +=
-            Math.min(
-                histA[i],
-                histB[i]
-            );
-
-    }
-
-    return similarity;
-
-}
-
-
-/* =========================================================
-   13. EDGE / STRUCTURE FEATURE
-========================================================= */
-
-function getEdgeFeature(
-    ctx,
-    width,
-    height
-) {
-
-    const imageData =
-        ctx.getImageData(
-            0,
-            0,
-            width,
-            height
-        );
-
-    const data =
-        imageData.data;
-
-    const gray =
-        new Float32Array(
-            width * height
-        );
-
-    for (
-        let y = 0;
-        y < height;
-        y++
-    ) {
-
-        for (
-            let x = 0;
-    
+    element.classList.remove(
+        "status-ok",
+        "status-warning",
+        "status-error
