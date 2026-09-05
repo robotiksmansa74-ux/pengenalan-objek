@@ -106,7 +106,7 @@
 
     <script>
         // 1. Inisialisasi Database IndexedDB
-        const db = new Dexie('ObjekDatabaseAkurat');
+        const db = new Dexie('ObjekDatabaseAkuratV2');
         db.version(1).stores({
             items: '++id, name, description, image'
         });
@@ -167,7 +167,7 @@
             });
         }
 
-        // 4. Algoritma Pencocokan Histogram Warna (Color Histogram Matching)
+        // 4. Algoritma Pencocokan Histogram Warna dengan Validasi Ketat
         function getColorHistogram(ctx, width, height) {
             const imageData = ctx.getImageData(0, 0, width, height);
             const data = imageData.data;
@@ -216,7 +216,7 @@
 
             let bestMatch = null;
             let highestSimilarity = 0;
-            const THRESHOLD = 0.65; // Ambang batas kemiripan (65%)
+            const THRESHOLD = 0.75; // Dinaikkan menjadi 75% agar lebih selektif
 
             for (let item of allItems) {
                 const itemBitmap = await createImageBitmap(item.image);
@@ -232,6 +232,7 @@
                 }
             }
 
+            // Validasi mutlak: Jika kemiripan di bawah threshold, anggap tidak dikenal (null)
             return highestSimilarity >= THRESHOLD ? bestMatch : null;
         }
 
